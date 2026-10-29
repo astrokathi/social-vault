@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelVault Engineering Curriculum • Master Index</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    .curriculum-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.25rem;
+      margin: 2rem 0;
+    }
+    .lesson-card {
+      background: var(--surface-color);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-decoration: none;
+      color: inherit;
+    }
+    .lesson-card:hover {
+      border-color: var(--accent-purple);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      text-decoration: none;
+    }
+    .card-top {
+      margin-bottom: 1rem;
+    }
+    .card-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.35;
+      margin-bottom: 0.5rem;
+    }
+    .card-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent-pink);
+    }
+    @media screen and (max-width: 480px) {
+      .curriculum-grid {
+        grid-template-columns: 1fr;
+      }
+      .lesson-card {
+        padding: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">Hands-On Pair Programming Architecture</span>
+      <h1>ReelVault Engineering Curriculum</h1>
+      <p class="subtitle">Complete technical walkthroughs, interactive diagrams, and quizzes covering local-first Flutter development, iOS hardware deployment, and resilient media pipelines.</p>
+    </header>
+
+    <div class="curriculum-grid">
+      <!-- Lesson 1 -->
+      <a href="0001-architecture-foundations-drift.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0001</div>
+          <div class="card-title">Architecture Foundations &amp; Reactive SQLite</div>
+          <div class="card-desc">Feature-first folder structure, Drift SQLite schemas, and the iOS runtime sandbox relative path resolver pattern.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 2 -->
+      <a href="0002-share-sheet-media-extraction.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0002</div>
+          <div class="card-title">Share Sheet Interception &amp; Asset Caching</div>
+          <div class="card-desc">Handling system share intents, parsing OpenGraph metadata, and downloading binary video/thumbnail blobs.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 3 -->
+      <a href="0003-infinite-modulo-feed-throttling.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0003</div>
+          <div class="card-title">Infinite Modulo Feeds &amp; Telemetry Throttling</div>
+          <div class="card-desc">Unbounded vertical PageView scrolling loops and balancing high-FPS UI rendering against 1Hz SQLite writes.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 4 -->
+      <a href="0004-adaptive-multidevice-breakpoints.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0004</div>
+          <div class="card-title">Adaptive Layouts &amp; Multi-Device Breakpoints</div>
+          <div class="card-desc">Responsive viewports, NavigationRail vs BottomNavigationBar, and 2-pane tablet split views.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 5 -->
+      <a href="0005-ios-physical-device-deployment.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0005</div>
+          <div class="card-title">Physical iOS Deployment &amp; Security Gates</div>
+          <div class="card-desc">Personal Apple ID provisioning, the 3 iOS security trust gates, and the Debug vs Release lifecycle trap.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 6 -->
+      <a href="0006-empty-states-and-ios-share-intake.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0006</div>
+          <div class="card-title">Empty State UX &amp; Clipboard Link Intake</div>
+          <div class="card-desc">Why Personal Apple IDs cannot use App Groups, and building clipboard-sniffing link intake with step-by-step guides.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 7 -->
+      <a href="0007-favorites-system-collection-and-attribution.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0007</div>
+          <div class="card-title">Favorites System Folder &amp; Creator Attribution</div>
+          <div class="card-desc">Immutable system collections in SQLite, anti-plagiarism verified creator badges, and hardware screen rotation.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Lesson 8 -->
+      <a href="0008-instagram-video-sound-and-carousel-pipeline.html" class="lesson-card">
+        <div class="card-top">
+          <div class="card-num">Lesson 0008</div>
+          <div class="card-title">Dual-Engine Video &amp; Carousel Pipelines</div>
+          <div class="card-desc">Bypassing iOS hardware mute switches via AVAudioSession, separating carousels from videos, and discrete slide telemetry.</div>
+        </div>
+        <div class="card-footer">
+          <span>Start Lesson</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+
+      <!-- Architecture Cheatsheet -->
+      <a href="../reference/architecture-cheatsheet.html" class="lesson-card" style="border-color: rgba(6, 182, 212, 0.4);">
+        <div class="card-top">
+          <div class="card-num" style="color: var(--accent-amber);">Reference</div>
+          <div class="card-title">Production Architecture Cheat Sheet</div>
+          <div class="card-desc">Quick reference table for multi-device breakpoints, Drift indexing patterns, modulo loop formulas, and system data flows.</div>
+        </div>
+        <div class="card-footer" style="color: var(--accent-cyan);">
+          <span>Open Reference</span>
+          <span>&rarr;</span>
+        </div>
+      </a>
+    </div>
+
+    <footer>
+      <span>ReelVault • Educational Engineering Architecture</span>
+      <span>Flutter 3.24+ • Drift SQLite • iOS 17/18 Ready</span>
+    </footer>
+  </div>
+</body>
+</html>

@@ -8,6 +8,12 @@
 </head>
 <body>
   <div class="lesson-container">
+    <nav class="curriculum-nav">
+      <a href="index.html">&larr; Curriculum Index</a>
+      <span>Lesson 1 of 8</span>
+      <a href="0002-share-sheet-media-extraction.html">Next: Share Sheet &rarr;</a>
+    </nav>
+
     <header>
       <span class="badge">ReelVault Course • Lesson 0001</span>
       <h1>Architecture Foundations &amp; Reactive SQLite with Drift</h1>
@@ -27,7 +33,7 @@
         <h4>Architectural Invariant</h4>
         <p>
           Never store full absolute file paths (e.g., <code>/var/mobile/Containers/Data/Application/&lt;UUID&gt;/...</code>) in SQLite on iOS! Every time iOS updates or restarts an app, that container <code>&lt;UUID&gt;</code> can change. We only store <em>relative paths</em> (e.g., <code>vault_media/C9xLmP2oQ1z/thumb.webp</code>) and prepend <code>getApplicationDocumentsDirectory().path</code> at runtime.
-        </div>
+        </p>
       </div>
     </section>
 
@@ -91,8 +97,8 @@ class VaultMediaItems extends Table { ... }</code></pre>
     </section>
 
     <footer>
-      <span>ReelVault Interactive Curriculum</span>
-      <span><a href="https://drift.simonbinder.eu/" target="_blank">Primary Source: Drift Documentation &rarr;</a></span>
+      <span><a href="index.html">&larr; Curriculum Index</a></span>
+      <span><a href="0002-share-sheet-media-extraction.html">Lesson 0002: Share Sheet &rarr;</a></span>
     </footer>
   </div>
 

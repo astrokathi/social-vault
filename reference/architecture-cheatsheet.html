@@ -8,6 +8,12 @@
 </head>
 <body>
   <div class="lesson-container">
+    <nav class="curriculum-nav">
+      <a href="../lessons/index.html">&larr; Back to Curriculum Index</a>
+      <span>Reference Cheat Sheet</span>
+      <a href="../lessons/0001-architecture-foundations-drift.html">Start Course &rarr;</a>
+    </nav>
+
     <header>
       <span class="badge">ReelVault Reference Document</span>
       <h1>Production Mobile Architecture Cheat Sheet</h1>
@@ -65,40 +71,42 @@ PageView.builder(
 
     <section>
       <h2>4. Responsive Breakpoints Quick-Reference</h2>
-      <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--surface-border); text-align: left;">
-            <th style="padding: 8px;">Viewport Width</th>
-            <th style="padding: 8px;">Device Class</th>
-            <th style="padding: 8px;">Navigation</th>
-            <th style="padding: 8px;">Feed Structure</th>
-            <th style="padding: 8px;">Library Grid</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom: 1px solid var(--surface-border);">
-            <td style="padding: 8px;"><code>&lt; 390dp</code></td>
-            <td style="padding: 8px;">iPhone SE / Mini</td>
-            <td style="padding: 8px;">56dp BottomBar</td>
-            <td style="padding: 8px;">Full bleed 9:16</td>
-            <td style="padding: 8px;">3 Columns</td>
-          </tr>
-          <tr style="border-bottom: 1px solid var(--surface-border);">
-            <td style="padding: 8px;"><code>390 – 699dp</code></td>
-            <td style="padding: 8px;">iPhone 16 Pro / Pixel 9</td>
-            <td style="padding: 8px;">Edge-to-Edge BottomBar</td>
-            <td style="padding: 8px;">Full bleed 9:16</td>
-            <td style="padding: 8px;">3 Columns</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px;"><code>&gt;= 700dp</code></td>
-            <td style="padding: 8px;">iPad / Tablets / Foldable</td>
-            <td style="padding: 8px;">80dp NavigationRail</td>
-            <td style="padding: 8px;">2-Pane (Player + Queue)</td>
-            <td style="padding: 8px;">5 Columns</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Viewport Width</th>
+              <th>Device Class</th>
+              <th>Navigation</th>
+              <th>Feed Structure</th>
+              <th>Library Grid</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>&lt; 390dp</code></td>
+              <td>iPhone SE / Mini</td>
+              <td>56dp BottomBar</td>
+              <td>Full bleed 9:16</td>
+              <td>3 Columns</td>
+            </tr>
+            <tr>
+              <td><code>390 – 699dp</code></td>
+              <td>iPhone 16 Pro / Pixel 9</td>
+              <td>Edge-to-Edge BottomBar</td>
+              <td>Full bleed 9:16</td>
+              <td>3 Columns</td>
+            </tr>
+            <tr>
+              <td><code>&gt;= 700dp</code></td>
+              <td>iPad / Tablets / Foldable</td>
+              <td>80dp NavigationRail</td>
+              <td>2-Pane (Player + Queue)</td>
+              <td>5 Columns</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <footer>

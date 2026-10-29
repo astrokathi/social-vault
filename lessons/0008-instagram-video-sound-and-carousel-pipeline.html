@@ -8,6 +8,12 @@
 </head>
 <body>
   <div class="lesson-container">
+    <nav class="curriculum-nav">
+      <a href="0007-favorites-system-collection-and-attribution.html">&larr; Lesson 7</a>
+      <span>Lesson 8 of 8</span>
+      <a href="index.html">Index &bull; All Lessons &rarr;</a>
+    </nav>
+
     <header>
       <span class="badge">ReelVault Course • Lesson 0008</span>
       <h1>Dual-Engine Media Playback, Audio Sessions &amp; Carousel Pipelines</h1>
@@ -79,21 +85,11 @@ do {
     </section>
 
     <footer>
-      <p>ReelVault • Educational Engineering Architecture</p>
+      <span><a href="0007-favorites-system-collection-and-attribution.html">&larr; Lesson 0007: Favorites &amp; Attribution</a></span>
+      <span><a href="index.html">Curriculum Hub &rarr;</a></span>
     </footer>
   </div>
 
-  <script>
-    function checkAnswer(index, isCorrect) {
-      const result = document.getElementById('quiz-result');
-      if (isCorrect) {
-        result.textContent = 'Correct! AVAudioSessionCategoryPlayback is required for media playback in iOS to bypass the hardware silent switch.';
-        result.className = 'quiz-feedback success';
-      } else {
-        result.textContent = 'Incorrect. Review Section 1 on iOS AVAudioSessionCategory configuration.';
-        result.className = 'quiz-feedback error';
-      }
-    }
-  </script>
+  <script src="../assets/quiz.js"></script>
 </body>
 </html>
