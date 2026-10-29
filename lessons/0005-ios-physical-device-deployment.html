@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0005: Physical iOS Device Deployment &amp; Security Architecture</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0005</span>
+      <h1>Physical iOS Device Deployment &amp; Security Architecture</h1>
+      <p class="subtitle">Personal Apple ID Provisioning, the 3 iOS Security Gates, and the Debug vs. Release Lifecycle Trap.</p>
+    </header>
+
+    <section>
+      <h2>1. The Physical Hardware Deployment Reality</h2>
+      <p>
+        Running an app in the macOS iOS Simulator is trivial because the simulator runs un-sandboxed x86_64 or ARM64 code without signature enforcement.
+        However, deploying to a real, physical iPhone over a Lightning or USB-C cable triggers Apple's strict hardware enclave and security subsystem (Secure Enclave, MobileDevice framework, and CoreDevice daemon).
+      </p>
+    </section>
+
+    <section>
+      <h2>2. The Three iOS Security Gates</h2>
+      <div class="diagram-box">
+┌────────────────────────────────────────────────────────────────────────┐
+│                        3 iOS SECURITY GATES                            │
+├────────────────────────────────────────────────────────────────────────┤
+│ Gate 1: Host Pairing ("Trust This Computer")                          │
+│   • Generates mutually authenticated pairing keys in /var/db/lockdown. │
+│   • Allows usbmuxd and devicectl to communicate over USB.              │
+├────────────────────────────────────────────────────────────────────────┤
+│ Gate 2: Developer Mode (iOS 16, 17, 18)                               │
+│   • Settings &gt; Privacy &amp; Security &gt; Developer Mode &gt; Turn On.         │
+│   • Reboots phone to unlock the Developer Disk Image (DDI) mount.      │
+├────────────────────────────────────────────────────────────────────────┤
+│ Gate 3: Personal Team Certificate Trust                               │
+│   • Settings &gt; General &gt; VPN &amp; Device Management &gt; Developer App.     │
+│   • Explicitly trusts the 7-day Apple ID ad-hoc provisioning profile.  │
+└────────────────────────────────────────────────────────────────────────┘
+      </div>
+    </section>
+
+    <section>
+      <h2>3. The "App Doesn't Open" Trap: Debug vs. Release</h2>
+      <p>
+        A widespread mystery for Flutter engineers is: <em>"I trusted the developer certificate, but when I tap the app icon on my iPhone, it immediately closes or won't open!"</em>
+      </p>
+      <div class="diagram-box">
+┌─────────────────────────────────┬─────────────────────────────────┐
+│       FLUTTER DEBUG MODE        │      FLUTTER RELEASE MODE       │
+├─────────────────────────────────┼─────────────────────────────────┤
+│ • Compiles with Dart JIT VM.    │ • Compiles pure AOT machine code│
+│ • Requires active VM socket.    │ • Zero external socket checks.  │
+│ • Tapping icon standalone exits │ • Taps open instantly standalone│
+│   immediately if VM unreachable!│ • Runs forever offline.         │
+└─────────────────────────────────┴─────────────────────────────────┘
+      </div>
+      <p>
+        When you run <code>flutter run -d [device]</code> in default debug mode, Flutter expects an active connection to your Mac's Dart Observatory/DevTools server. If you disconnect the cable or tap the icon directly on the home screen after a session ends, the app aborts.
+      </p>
+      <p>
+        Building with <code>--release</code> (as automated in <code>deploy.sh</code>) strips all debugging instrumentation and installs a true standalone production binary.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Interactive Knowledge Check</h2>
+      <div id="quiz-box" class="quiz-box">
+        <p class="quiz-question">Why does a Flutter app built in Debug mode close immediately when tapped from an iPhone home screen without a Mac attached?</p>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer(0, false)">A) iOS certificates expire after 1 hour</button>
+          <button class="quiz-btn" onclick="checkAnswer(1, true)">B) The Dart JIT runtime cannot connect to the host VM debugging socket</button>
+          <button class="quiz-btn" onclick="checkAnswer(2, false)">C) SQLite requires an internet connection</button>
+          <button class="quiz-btn" onclick="checkAnswer(3, false)">D) The iPhone camera is disabled</button>
+        </div>
+        <p id="quiz-result" class="quiz-feedback"></p>
+      </div>
+    </section>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

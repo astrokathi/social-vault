@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0008: Dual-Engine Media Playback, Audio Sessions &amp; Carousel Pipelines</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0008</span>
+      <h1>Dual-Engine Media Playback, Audio Sessions &amp; Carousel Pipelines</h1>
+      <p class="subtitle">Bypassing iOS Hardware Mute Switches, Separating Video vs. Photo Carousels, and Tracking Discrete Slide Telemetry.</p>
+    </header>
+
+    <section>
+      <h2>1. The iOS Silent Switch Trap (AVAudioSession)</h2>
+      <p>
+        On iPhones, the physical ring/silent switch on the side of the device silences apps that use the default <code>AVAudioSessionCategoryAmbient</code>.
+        Video applications (like YouTube, TikTok, or Instagram) configure <code>AVAudioSessionCategoryPlayback</code> with <code>.moviePlayback</code> to ensure video audio plays out loud regardless of silent mode:
+      </p>
+      <pre><code>// ios/Runner/AppDelegate.swift
+do {
+  try AVAudioSession.sharedInstance().setCategory(
+    .playback,
+    mode: .moviePlayback,
+    options: [.mixWithOthers]
+  )
+  try AVAudioSession.sharedInstance().setActive(true)
+} catch {
+  print("Failed to set AVAudioSession category: \(error)")
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>2. Slideshows vs. Videos: Eliminating the Play Button</h2>
+      <p>
+        A common UX anti-pattern occurs when multi-slide photo posts (carousels) are classified as video feeds, displaying a video play overlay on static images:
+      </p>
+      <div class="diagram-box">
+┌─────────────────────────────────┬─────────────────────────────────┐
+│       VIDEO FEED (REEL)         │     CAROUSEL FEED (SLIDES)      │
+├─────────────────────────────────┼─────────────────────────────────┤
+│ • Component: ReelVideoItem      │ • Component: CarouselMediaItem  │
+│ • Controls: Play/Pause/Mute     │ • Controls: Horizontal Swipe    │
+│ • Center: Play/Pause icon       │ • Center: Zero Play Overlay!    │
+│ • Progress: Continuous ms timer │ • Progress: (Slide + 1) / Total │
+└─────────────────────────────────┴─────────────────────────────────┘
+      </div>
+      <p>
+        ReelVault isolates carousels by inspecting URL paths (<code>/p/</code> vs <code>/reel/</code>), checking media files, and allowing manual intake classification in <code>ShareCollectionSheet</code>.
+      </p>
+    </section>
+
+    <section>
+      <h2>3. Dual-Engine Media Playback Fallback</h2>
+      <p>
+        Because social platforms frequently update anti-scraping countermeasures and login walls:
+      </p>
+      <ul>
+        <li><strong>Engine A (Local Sandbox):</strong> When a binary <code>.mp4</code> is downloaded, it plays 100% offline via Flutter's <code>VideoPlayerController.file</code> with zero network dependency.</li>
+        <li><strong>Engine B (In-Feed Live WebKit Stream):</strong> When direct download is blocked by anti-bot walls, ReelVault seamlessly renders the native WebKit embedded player with full video and audio directly in-feed.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. Interactive Knowledge Check</h2>
+      <div id="quiz-box" class="quiz-box">
+        <p class="quiz-question">Why did Instagram video audio fail to play when the iPhone's physical side switch was set to silent?</p>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer(0, false)">A) Flutter cannot play audio on iOS devices</button>
+          <button class="quiz-btn" onclick="checkAnswer(1, true)">B) The default iOS AVAudioSession category was ambient, which silences audio on hardware mute unless set to .playback</button>
+          <button class="quiz-btn" onclick="checkAnswer(2, false)">C) The user did not grant microphone permissions</button>
+          <button class="quiz-btn" onclick="checkAnswer(3, false)">D) The SQLite database lacked an audio column</button>
+        </div>
+        <p id="quiz-result" class="quiz-feedback"></p>
+      </div>
+    </section>
+
+    <footer>
+      <p>ReelVault • Educational Engineering Architecture</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(index, isCorrect) {
+      const result = document.getElementById('quiz-result');
+      if (isCorrect) {
+        result.textContent = 'Correct! AVAudioSessionCategoryPlayback is required for media playback in iOS to bypass the hardware silent switch.';
+        result.className = 'quiz-feedback success';
+      } else {
+        result.textContent = 'Incorrect. Review Section 1 on iOS AVAudioSessionCategory configuration.';
+        result.className = 'quiz-feedback error';
+      }
+    }
+  </script>
+</body>
+</html>

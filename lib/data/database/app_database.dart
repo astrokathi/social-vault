@@ -54,6 +54,9 @@ class VaultMediaItems extends Table {
   IntColumn get lastPositionMs => integer().withDefault(const Constant(0))();
   IntColumn get fileSizeBytes => integer().withDefault(const Constant(0))();
 
+  // Favorites System Flag
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastWatchedAt => dateTime().nullable()();
 
@@ -65,8 +68,74 @@ class VaultMediaItems extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
+  static const String favoritesCollectionId = 'col_favorites';
+  static const String favoritesCollectionName = 'Favorites';
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await ensureFavoritesCollectionExists();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(vaultMediaItems, vaultMediaItems.isFavorite);
+        await ensureFavoritesCollectionExists();
+      }
+    },
+    beforeOpen: (details) async {
+      await ensureFavoritesCollectionExists();
+      await healExistingMediaTypes();
+    },
+  );
+
+  /// Self-heals any incorrectly tagged posts:
+  /// Any item with /p/ in its URL or without a local video file is tagged as MediaType.carousel
+  /// so it renders as a swipeable slideshow instead of a video player with a play button.
+  Future<void> healExistingMediaTypes() async {
+    final all = await select(vaultMediaItems).get();
+    for (final item in all) {
+      if (item.canonicalUrl.contains('/p/') ||
+          (item.localVideoRelPath == null && item.mediaType == MediaType.video)) {
+        await (update(vaultMediaItems)..where((t) => t.id.equals(item.id))).write(
+          const VaultMediaItemsCompanion(
+            mediaType: Value(MediaType.carousel),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Guarantees the system Favorites collection is present and cannot be deleted
+  Future<void> ensureFavoritesCollectionExists() async {
+    final existing = await (select(collections)
+      ..where((t) => t.id.equals(favoritesCollectionId))).getSingleOrNull();
+    if (existing == null) {
+      await into(collections).insert(
+        CollectionEntity(
+          id: favoritesCollectionId,
+          name: favoritesCollectionName,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
+    }
+  }
+
+  /// Toggles the isFavorite boolean for a media item
+  Future<bool> toggleFavorite(String mediaId) async {
+    final item = await (select(vaultMediaItems)
+      ..where((t) => t.id.equals(mediaId))).getSingleOrNull();
+    if (item == null) return false;
+    final newFav = !item.isFavorite;
+    await (update(vaultMediaItems)..where((t) => t.id.equals(mediaId))).write(
+      VaultMediaItemsCompanion(isFavorite: Value(newFav)),
+    );
+    return newFav;
+  }
 
   // Watch Feed Items with reactive filtering for "Hide 100% Watched"
   Stream<List<VaultMediaEntity>> watchFeedQueue({required bool hideCompleted}) {
@@ -80,10 +149,15 @@ class AppDatabase extends _$AppDatabase {
     return query.watch();
   }
 
-  // Watch all collections
+  // Watch all collections - Favorites always stays pinned first!
   Stream<List<CollectionEntity>> watchAllCollections() {
     final query = select(collections)
       ..orderBy([
+        (t) => OrderingTerm(
+              expression: const CustomExpression<int>(
+                  "CASE WHEN id = 'col_favorites' THEN 0 ELSE 1 END"),
+              mode: OrderingMode.asc,
+            ),
         (t) => OrderingTerm(expression: t.name, mode: OrderingMode.asc),
       ]);
     return query.watch();
@@ -92,7 +166,11 @@ class AppDatabase extends _$AppDatabase {
   // Watch media items for a specific collection (or all if collectionId is null)
   Stream<List<VaultMediaEntity>> watchMediaForCollection(String? collectionId) {
     final query = select(vaultMediaItems);
-    if (collectionId != null && collectionId.isNotEmpty) {
+    if (collectionId == favoritesCollectionId) {
+      // Return both items explicitly in Favorites AND any items flagged isFavorite
+      query.where((tbl) =>
+          tbl.isFavorite.equals(true) | tbl.collectionId.equals(favoritesCollectionId));
+    } else if (collectionId != null && collectionId.isNotEmpty) {
       query.where((tbl) => tbl.collectionId.equals(collectionId));
     }
     query.orderBy([
@@ -154,6 +232,14 @@ class AppDatabase extends _$AppDatabase {
     await delete(collections).go();
   }
 
+  // Purge sample mock data if present
+  Future<void> removeSampleData() async {
+    final sampleColIds = ['col-ui', 'col-workout', 'col-synth', 'col-coffee'];
+    final sampleMediaIds = ['rv-101', 'rv-102', 'rv-103', 'rv-104'];
+    await (delete(vaultMediaItems)..where((t) => t.id.isIn(sampleMediaIds))).go();
+    await (delete(collections)..where((t) => t.id.isIn(sampleColIds))).go();
+  }
+
   // Calculate total media storage bytes tracked in SQLite
   Future<int> getTotalMediaBytes() async {
     final sumExp = vaultMediaItems.fileSizeBytes.sum();
@@ -195,6 +281,7 @@ class AppDatabase extends _$AppDatabase {
         durationMs: 34000,
         lastPositionMs: 22100,
         fileSizeBytes: 14889779, // ~14.2 MB
+        isFavorite: false,
         createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
         lastWatchedAt: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
@@ -218,6 +305,7 @@ class AppDatabase extends _$AppDatabase {
         durationMs: 0,
         lastPositionMs: 2,
         fileSizeBytes: 7130316, // ~6.8 MB
+        isFavorite: false,
         createdAt: DateTime.now().subtract(const Duration(hours: 1)),
         lastWatchedAt: DateTime.now().subtract(const Duration(minutes: 30)),
       ),
@@ -236,6 +324,7 @@ class AppDatabase extends _$AppDatabase {
         durationMs: 45000,
         lastPositionMs: 45000,
         fileSizeBytes: 20342374, // ~19.4 MB
+        isFavorite: false,
         createdAt: DateTime.now().subtract(const Duration(hours: 3)),
         lastWatchedAt: DateTime.now().subtract(const Duration(hours: 1)),
       ),
@@ -254,6 +343,7 @@ class AppDatabase extends _$AppDatabase {
         durationMs: 52000,
         lastPositionMs: 13000,
         fileSizeBytes: 23173529, // ~22.1 MB
+        isFavorite: false,
         createdAt: DateTime.now().subtract(const Duration(days: 1)),
         lastWatchedAt: DateTime.now().subtract(const Duration(hours: 18)),
       ),
@@ -276,6 +366,7 @@ class AppDatabase extends _$AppDatabase {
         durationMs: 0,
         lastPositionMs: 3,
         fileSizeBytes: 5347737, // ~5.1 MB
+        isFavorite: false,
         createdAt: DateTime.now().subtract(const Duration(days: 2)),
         lastWatchedAt: DateTime.now().subtract(const Duration(days: 1)),
       ),
@@ -290,12 +381,13 @@ class AppDatabase extends _$AppDatabase {
         localThumbnailRelPath: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=800&auto=format&fit=crop&q=80',
         localVideoRelPath: null,
         localCarouselRelPathsJson: '[]',
-        watchProgress: 0.0,
-        durationMs: 19000,
-        lastPositionMs: 0,
-        fileSizeBytes: 12163481, // ~11.6 MB
-        createdAt: DateTime.now().subtract(const Duration(days: 4)),
-        lastWatchedAt: null,
+        watchProgress: 0.10,
+        durationMs: 18000,
+        lastPositionMs: 1800,
+        fileSizeBytes: 8945672, // ~8.5 MB
+        isFavorite: false,
+        createdAt: DateTime.now().subtract(const Duration(days: 3)),
+        lastWatchedAt: DateTime.now().subtract(const Duration(days: 2)),
       ),
     ];
 

@@ -20,7 +20,7 @@ dependencies:
   path: ^1.9.0
 
   # OS Share Sheet Receiver (Android ACTION_SEND & iOS Share Extension)
-  receive_sharing_intent: ^1.8.0
+  receive_sharing_intent: 1.8.0
 
   # Media Playback & Caching
   video_player: ^2.9.1

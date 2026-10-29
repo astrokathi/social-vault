@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/url_sanitizer.dart';
+import '../../core/widgets/vault_image.dart';
 import '../../data/database/app_database.dart';
 import '../../data/services/local_asset_manager.dart';
 import '../../data/services/og_extractor_service.dart';
@@ -26,6 +28,154 @@ class ShareCollectionSheet extends ConsumerStatefulWidget {
     );
   }
 
+  /// Checks the system clipboard for an Instagram URL and opens the sheet immediately.
+  /// If no valid Instagram URL is on the clipboard, displays the manual input dialog.
+  static Future<void> showWithClipboardOrInput(BuildContext context) async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      final parsed = UrlSanitizer.parseInstagramUrl(text);
+      if (parsed != null && context.mounted) {
+        return show(context, parsed.canonicalUrl);
+      }
+    } catch (_) {}
+
+    if (context.mounted) {
+      return showManualInputDialog(context);
+    }
+  }
+
+  /// Shows a modal dialog allowing the user to paste or enter any Instagram reel URL
+  static Future<void> showManualInputDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    String? errorText;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: AppTheme.charcoal,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: AppTheme.borderDark, width: 1.5)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Icon(PhosphorIconsFill.instagramLogo, color: AppTheme.accentPink, size: 24),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Paste Instagram Reel Link',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Paste any Instagram Reel or Carousel URL to extract and save it to your vault.',
+                  style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFA1A1AA)),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: GoogleFonts.inter(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'https://www.instagram.com/reel/...',
+                    hintStyle: GoogleFonts.inter(color: Colors.white38),
+                    errorText: errorText,
+                    suffixIcon: IconButton(
+                      icon: const Icon(PhosphorIconsBold.clipboardText, color: AppTheme.accentPink),
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null) {
+                          controller.text = data!.text!.trim();
+                        }
+                      },
+                      tooltip: 'Paste from clipboard',
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.elevated,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.borderDark),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.accentPink, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accentPink,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          final input = controller.text.trim();
+                          final parsed = UrlSanitizer.parseInstagramUrl(input);
+                          if (parsed == null && !input.contains('instagram.com/')) {
+                            setModalState(() {
+                              errorText = 'Please enter a valid Instagram reel link';
+                            });
+                            return;
+                          }
+                          Navigator.of(ctx).pop();
+                          show(context, parsed?.canonicalUrl ?? input);
+                        },
+                        icon: const Icon(PhosphorIconsBold.downloadSimple, size: 16),
+                        label: const Text('Import Reel', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   ConsumerState<ShareCollectionSheet> createState() => _ShareCollectionSheetState();
 }
@@ -37,7 +187,13 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
   String? _selectedCollectionId;
   String _customCollectionName = '';
   bool _showCustomInput = false;
+  MediaType _selectedMediaType = MediaType.video;
+  List<String> _carouselUrls = [];
+  bool _showAddSlideInput = false;
+  final TextEditingController _newSlideController = TextEditingController();
   final TextEditingController _customColController = TextEditingController();
+  final TextEditingController _authorController = TextEditingController();
+  final TextEditingController _captionController = TextEditingController();
 
   @override
   void initState() {
@@ -47,7 +203,10 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
 
   @override
   void dispose() {
+    _newSlideController.dispose();
     _customColController.dispose();
+    _authorController.dispose();
+    _captionController.dispose();
     super.dispose();
   }
 
@@ -60,8 +219,20 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
     final meta = await ogService.extractFromUrl(canonical, shortcode);
 
     if (mounted) {
+      final isCarousel = parsed?.isCarouselPost == true ||
+          canonical.contains('/p/') ||
+          meta.mediaType == MediaType.carousel;
+
+      _authorController.text = meta.authorHandle;
+      _captionController.text = meta.caption;
+
+      _carouselUrls = meta.carouselRemoteUrls.isNotEmpty
+          ? List.from(meta.carouselRemoteUrls)
+          : (meta.thumbnailRemoteUrl.isNotEmpty ? [meta.thumbnailRemoteUrl] : []);
+
       setState(() {
         _metadata = meta;
+        _selectedMediaType = isCarousel ? MediaType.carousel : MediaType.video;
         _isLoadingOg = false;
       });
     }
@@ -102,28 +273,54 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
         );
       }
 
+      final finalAuthor = _authorController.text.trim().isNotEmpty
+          ? (_authorController.text.trim().startsWith('@')
+              ? _authorController.text.trim()
+              : '@${_authorController.text.trim()}')
+          : _metadata!.authorHandle;
+      final finalCaption = _captionController.text.trim().isNotEmpty
+          ? _captionController.text.trim()
+          : _metadata!.caption;
+
+      // Effective metadata using user's chosen media type and slides
+      final effectiveMeta = ExtractedMediaMetadata(
+        shortcode: _metadata!.shortcode,
+        canonicalUrl: _metadata!.canonicalUrl,
+        mediaType: _selectedMediaType,
+        authorHandle: finalAuthor,
+        caption: finalCaption,
+        thumbnailRemoteUrl: _metadata!.thumbnailRemoteUrl,
+        videoRemoteUrl: _selectedMediaType == MediaType.video ? _metadata!.videoRemoteUrl : null,
+        carouselRemoteUrls: _selectedMediaType == MediaType.carousel ? _carouselUrls : const [],
+        estimatedSizeBytes: _metadata!.estimatedSizeBytes,
+        durationMs: _selectedMediaType == MediaType.video ? _metadata!.durationMs : 0,
+      );
+
       // Download binary assets to local documents sandbox
       final savedAssets = await assetManager.downloadAndSaveMedia(
-        metadata: _metadata!,
+        metadata: effectiveMeta,
         collectionId: targetCollectionId,
       );
+
+      final isFav = targetCollectionId == AppDatabase.favoritesCollectionId;
 
       // Write row to SQLite
       final mediaEntity = VaultMediaEntity(
         id: const Uuid().v4(),
-        shortcode: _metadata!.shortcode,
-        canonicalUrl: _metadata!.canonicalUrl,
+        shortcode: effectiveMeta.shortcode,
+        canonicalUrl: effectiveMeta.canonicalUrl,
         collectionId: targetCollectionId,
-        mediaType: _metadata!.mediaType,
-        authorHandle: _metadata!.authorHandle,
-        caption: _metadata!.caption,
+        mediaType: _selectedMediaType,
+        authorHandle: finalAuthor,
+        caption: finalCaption,
         localThumbnailRelPath: savedAssets.thumbnailRelPath,
-        localVideoRelPath: savedAssets.videoRelPath,
+        localVideoRelPath: _selectedMediaType == MediaType.video ? savedAssets.videoRelPath : null,
         localCarouselRelPathsJson: savedAssets.carouselRelPathsJson,
         watchProgress: 0.0,
-        durationMs: _metadata!.durationMs,
+        durationMs: _selectedMediaType == MediaType.video ? effectiveMeta.durationMs : 0,
         lastPositionMs: 0,
         fileSizeBytes: savedAssets.totalBytes,
+        isFavorite: isFav,
         createdAt: DateTime.now(),
         lastWatchedAt: null,
       );
@@ -285,21 +482,15 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                       // Thumbnail
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          _metadata!.thumbnailRemoteUrl,
+                        child: VaultImage(
+                          imagePath: _metadata!.thumbnailRemoteUrl,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 80,
-                            height: 80,
-                            color: Colors.black45,
-                            child: const Icon(PhosphorIconsRegular.imageBroken, color: Colors.white38),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 14),
-                      // Details
+                      // Details (Editable Creator Credit & Full Caption)
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,38 +498,40 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  _metadata!.authorHandle,
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.accentPink.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    _metadata!.mediaType == MediaType.carousel ? 'CAROUSEL' : 'REEL',
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 9,
+                                const Icon(PhosphorIconsFill.at, size: 14, color: AppTheme.accentPink),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _authorController,
+                                    style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w700,
-                                      color: AppTheme.accentPink,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      hintText: '@creator_handle',
+                                      hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                                      border: InputBorder.none,
                                     ),
                                   ),
                                 ),
+                                const Icon(PhosphorIconsFill.shieldCheck, size: 14, color: AppTheme.accentCyan),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              _metadata!.caption,
+                            TextField(
+                              controller: _captionController,
                               maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFD4D4D8)),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                hintText: 'Original description / caption...',
+                                hintStyle: TextStyle(color: Colors.white38, fontSize: 11),
+                                border: InputBorder.none,
+                              ),
                             ),
                             const SizedBox(height: 6),
                             Row(
@@ -363,7 +556,231 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                   ),
                 ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // Media Classification Selector: Reel Video vs Slideshow Carousel
+              Text(
+                'CONTENT TYPE',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: const Color(0xFF71717A),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedMediaType = MediaType.video;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedMediaType == MediaType.video
+                              ? AppTheme.accentPink.withValues(alpha: 0.25)
+                              : AppTheme.elevated,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _selectedMediaType == MediaType.video
+                                ? AppTheme.accentPink
+                                : AppTheme.borderDark,
+                            width: _selectedMediaType == MediaType.video ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              PhosphorIconsFill.videoCamera,
+                              size: 16,
+                              color: _selectedMediaType == MediaType.video
+                                  ? AppTheme.accentPink
+                                  : Colors.white60,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Reel (Video)',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedMediaType == MediaType.video
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedMediaType = MediaType.carousel;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _selectedMediaType == MediaType.carousel
+                              ? AppTheme.accentCyan.withValues(alpha: 0.25)
+                              : AppTheme.elevated,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _selectedMediaType == MediaType.carousel
+                                ? AppTheme.accentCyan
+                                : AppTheme.borderDark,
+                            width: _selectedMediaType == MediaType.carousel ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              PhosphorIconsFill.images,
+                              size: 16,
+                              color: _selectedMediaType == MediaType.carousel
+                                  ? AppTheme.accentCyan
+                                  : Colors.white60,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Slideshow (Carousel)',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: _selectedMediaType == MediaType.carousel
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Carousel Slides Manager (Only shown when Carousel is selected)
+              if (_selectedMediaType == MediaType.carousel) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.elevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.accentCyan.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(PhosphorIconsFill.images, size: 14, color: AppTheme.accentCyan),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_carouselUrls.length} Carousel Slide${_carouselUrls.length == 1 ? '' : 's'}',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.accentCyan,
+                                ),
+                              ),
+                            ],
+                          ),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _showAddSlideInput = !_showAddSlideInput;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _showAddSlideInput ? PhosphorIconsBold.x : PhosphorIconsBold.plus,
+                                    size: 12,
+                                    color: Colors.white70,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _showAddSlideInput ? 'Cancel' : 'Add Slide',
+                                    style: GoogleFonts.inter(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_showAddSlideInput) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _newSlideController,
+                                style: GoogleFonts.inter(fontSize: 11.5, color: Colors.white),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: 'Paste slide image URL...',
+                                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 11),
+                                  filled: true,
+                                  fillColor: AppTheme.charcoal,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                final text = _newSlideController.text.trim();
+                                if (text.isNotEmpty && text.startsWith('http')) {
+                                  setState(() {
+                                    _carouselUrls.add(text);
+                                    _newSlideController.clear();
+                                    _showAddSlideInput = false;
+                                  });
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.accentCyan,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                minimumSize: Size.zero,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Add', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 18),
 
               // Collection Header
               Text(
@@ -384,6 +801,8 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                 children: [
                   ...collections.map((col) {
                     final isSelected = !_showCustomInput && _selectedCollectionId == col.id;
+                    final isFav = col.id == AppDatabase.favoritesCollectionId;
+
                     return InkWell(
                       onTap: () {
                         setState(() {
@@ -396,9 +815,13 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.accentPink.withValues(alpha: 0.2) : AppTheme.elevated,
+                          color: isSelected
+                              ? (isFav ? AppTheme.accentAmber.withValues(alpha: 0.25) : AppTheme.accentPink.withValues(alpha: 0.2))
+                              : AppTheme.elevated,
                           border: Border.all(
-                            color: isSelected ? AppTheme.accentPink : AppTheme.borderDark,
+                            color: isSelected
+                                ? (isFav ? AppTheme.accentAmber : AppTheme.accentPink)
+                                : (isFav ? AppTheme.accentAmber.withValues(alpha: 0.4) : AppTheme.borderDark),
                             width: isSelected ? 1.5 : 1,
                           ),
                           borderRadius: BorderRadius.circular(10),
@@ -407,9 +830,13 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isSelected ? PhosphorIconsFill.folder : PhosphorIconsRegular.folder,
+                              isFav
+                                  ? PhosphorIconsFill.star
+                                  : (isSelected ? PhosphorIconsFill.folder : PhosphorIconsRegular.folder),
                               size: 15,
-                              color: isSelected ? AppTheme.accentPink : const Color(0xFFA1A1AA),
+                              color: isFav
+                                  ? AppTheme.accentAmber
+                                  : (isSelected ? AppTheme.accentPink : const Color(0xFFA1A1AA)),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -417,7 +844,9 @@ class _ShareCollectionSheetState extends ConsumerState<ShareCollectionSheet> {
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? Colors.white : const Color(0xFFD4D4D8),
+                                color: isFav
+                                    ? (isSelected ? Colors.white : AppTheme.accentAmber)
+                                    : (isSelected ? Colors.white : const Color(0xFFD4D4D8)),
                               ),
                             ),
                           ],

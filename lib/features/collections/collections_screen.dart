@@ -24,44 +24,61 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
 
   void _showCreateCollectionDialog() {
     final controller = TextEditingController();
+    String? errorText;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.charcoal,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'New Collection',
-          style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: GoogleFonts.inter(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'e.g. Design Inspirations',
-            hintStyle: GoogleFonts.inter(color: Colors.white38),
-            filled: true,
-            fillColor: AppTheme.elevated,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppTheme.borderDark),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppTheme.accentPink),
-            ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.charcoal,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'New Collection',
+            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: GoogleFonts.inter(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Design Inspirations',
+                  hintStyle: GoogleFonts.inter(color: Colors.white38),
+                  errorText: errorText,
+                  filled: true,
+                  fillColor: AppTheme.elevated,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppTheme.borderDark),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppTheme.accentPink),
+                  ),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPink),
-            onPressed: () async {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPink),
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isEmpty) return;
+
+                if (name.toLowerCase() == 'favorites') {
+                  setDialogState(() {
+                    errorText = 'Favorites is a default collection & cannot be recreated.';
+                  });
+                  return;
+                }
+
                 final db = ref.read(databaseProvider);
                 await db.insertOrUpdateCollection(
                   CollectionEntity(
@@ -71,11 +88,11 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   ),
                 );
                 if (ctx.mounted) Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Create', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+              },
+              child: const Text('Create', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -145,10 +162,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
             icon: const Icon(PhosphorIconsBold.plusCircle, color: Colors.white),
             tooltip: 'Add Reel',
             onPressed: () {
-              ShareCollectionSheet.show(
-                context,
-                'https://www.instagram.com/reel/C8kPqR9vW4m/',
-              );
+              ShareCollectionSheet.showWithClipboardOrInput(context);
             },
           ),
           const SizedBox(width: 8),
@@ -297,19 +311,45 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   ) {
     if (collections.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(PhosphorIconsRegular.folderDashed, size: 56, color: Colors.white24),
-            const SizedBox(height: 12),
-            Text('No Collections Yet', style: GoogleFonts.plusJakartaSans(fontSize: 18, color: Colors.white70)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentPink),
-              onPressed: _showCreateCollectionDialog,
-              child: const Text('Create First Collection', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppTheme.elevated,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.borderDark),
+                ),
+                child: const Icon(PhosphorIconsFill.folderDashed, size: 48, color: AppTheme.accentPink),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Collections Yet',
+                style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Create custom collections like "Gym & Mobility", "Design Ideas", or "Recipes" to group your saved Reels.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFA1A1AA), height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentPink,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _showCreateCollectionDialog,
+                icon: const Icon(PhosphorIconsBold.folderPlus, size: 16),
+                label: const Text('Create First Collection', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -347,15 +387,45 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   Widget _buildMediaGrid(List<VaultMediaEntity> items, int columns) {
     if (items.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(PhosphorIconsRegular.filmReel, size: 56, color: Colors.white24),
-            const SizedBox(height: 12),
-            Text('No Reels In This View', style: GoogleFonts.plusJakartaSans(fontSize: 18, color: Colors.white70)),
-            const SizedBox(height: 8),
-            Text('Share an Instagram Reel or Carousel to populate.', style: GoogleFonts.inter(color: Colors.white38)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppTheme.elevated,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.borderDark),
+                ),
+                child: const Icon(PhosphorIconsFill.filmStrip, size: 48, color: AppTheme.accentPurple),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Reels In This View',
+                style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Save an Instagram Reel or Carousel to see it here.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFA1A1AA)),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentPink,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => ShareCollectionSheet.showWithClipboardOrInput(context),
+                icon: const Icon(PhosphorIconsBold.clipboardText, size: 16),
+                label: const Text('Paste Reel Link', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
         ),
       );
     }

@@ -1,21 +1,28 @@
 class UrlSanitizer {
   static final RegExp _igRegex = RegExp(
-    r'instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)',
+    r'instagram\.com\/(p|reel|reels|tv)\/([A-Za-z0-9_-]+)',
     caseSensitive: false,
   );
 
   /// Extracts shortcode (e.g. 'C9xLmP2oQ1z') and returns clean canonical URL
   /// Strips query tracking parameters (?igsh=..., ?utm_source=..., etc.)
-  static ({String shortcode, String canonicalUrl})? parseInstagramUrl(String rawSharedText) {
+  /// Accurately flags whether the post is a /p/ carousel/photo post or /reel/ video
+  static ({String shortcode, String canonicalUrl, bool isCarouselPost})? parseInstagramUrl(String rawSharedText) {
     if (rawSharedText.isEmpty) return null;
 
     final match = _igRegex.firstMatch(rawSharedText);
     if (match == null) return null;
 
-    final shortcode = match.group(1)!;
+    final type = match.group(1)!.toLowerCase();
+    final shortcode = match.group(2)!;
+    final isPost = type == 'p';
+
     return (
       shortcode: shortcode,
-      canonicalUrl: 'https://www.instagram.com/reel/$shortcode/',
+      canonicalUrl: isPost
+          ? 'https://www.instagram.com/p/$shortcode/'
+          : 'https://www.instagram.com/reel/$shortcode/',
+      isCarouselPost: isPost,
     );
   }
 

@@ -19,7 +19,8 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.shortcode, equals('C8kPqR9vW4m'));
-      expect(result.canonicalUrl, equals('https://www.instagram.com/reel/C8kPqR9vW4m/'));
+      expect(result.canonicalUrl, equals('https://www.instagram.com/p/C8kPqR9vW4m/'));
+      expect(result.isCarouselPost, isTrue);
     });
 
     test('Returns null for non-instagram URLs', () {

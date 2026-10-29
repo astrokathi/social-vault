@@ -20,8 +20,8 @@ void main() async {
   final container = ProviderContainer();
   final db = container.read(databaseProvider);
   
-  // Seed sample collections & media records matching the UI prototype on first run
-  await db.seedInitialDataIfEmpty();
+  // Clean out sample data so the app starts cleanly with empty banner states
+  await db.removeSampleData();
 
   runApp(
     UncontrolledProviderScope(

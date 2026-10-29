@@ -340,6 +340,16 @@ class $VaultMediaItemsTable extends VaultMediaItems
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _isFavoriteMeta =
+      const VerificationMeta('isFavorite');
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+      'is_favorite', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_favorite" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -370,6 +380,7 @@ class $VaultMediaItemsTable extends VaultMediaItems
         durationMs,
         lastPositionMs,
         fileSizeBytes,
+        isFavorite,
         createdAt,
         lastWatchedAt
       ];
@@ -465,6 +476,12 @@ class $VaultMediaItemsTable extends VaultMediaItems
           fileSizeBytes.isAcceptableOrUnknown(
               data['file_size_bytes']!, _fileSizeBytesMeta));
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+          _isFavoriteMeta,
+          isFavorite.isAcceptableOrUnknown(
+              data['is_favorite']!, _isFavoriteMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -515,6 +532,8 @@ class $VaultMediaItemsTable extends VaultMediaItems
           .read(DriftSqlType.int, data['${effectivePrefix}last_position_ms'])!,
       fileSizeBytes: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}file_size_bytes'])!,
+      isFavorite: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       lastWatchedAt: attachedDatabase.typeMapping.read(
@@ -547,6 +566,7 @@ class VaultMediaEntity extends DataClass
   final int durationMs;
   final int lastPositionMs;
   final int fileSizeBytes;
+  final bool isFavorite;
   final DateTime createdAt;
   final DateTime? lastWatchedAt;
   const VaultMediaEntity(
@@ -564,6 +584,7 @@ class VaultMediaEntity extends DataClass
       required this.durationMs,
       required this.lastPositionMs,
       required this.fileSizeBytes,
+      required this.isFavorite,
       required this.createdAt,
       this.lastWatchedAt});
   @override
@@ -589,6 +610,7 @@ class VaultMediaEntity extends DataClass
     map['duration_ms'] = Variable<int>(durationMs);
     map['last_position_ms'] = Variable<int>(lastPositionMs);
     map['file_size_bytes'] = Variable<int>(fileSizeBytes);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || lastWatchedAt != null) {
       map['last_watched_at'] = Variable<DateTime>(lastWatchedAt);
@@ -614,6 +636,7 @@ class VaultMediaEntity extends DataClass
       durationMs: Value(durationMs),
       lastPositionMs: Value(lastPositionMs),
       fileSizeBytes: Value(fileSizeBytes),
+      isFavorite: Value(isFavorite),
       createdAt: Value(createdAt),
       lastWatchedAt: lastWatchedAt == null && nullToAbsent
           ? const Value.absent()
@@ -643,6 +666,7 @@ class VaultMediaEntity extends DataClass
       durationMs: serializer.fromJson<int>(json['durationMs']),
       lastPositionMs: serializer.fromJson<int>(json['lastPositionMs']),
       fileSizeBytes: serializer.fromJson<int>(json['fileSizeBytes']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastWatchedAt: serializer.fromJson<DateTime?>(json['lastWatchedAt']),
     );
@@ -667,6 +691,7 @@ class VaultMediaEntity extends DataClass
       'durationMs': serializer.toJson<int>(durationMs),
       'lastPositionMs': serializer.toJson<int>(lastPositionMs),
       'fileSizeBytes': serializer.toJson<int>(fileSizeBytes),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastWatchedAt': serializer.toJson<DateTime?>(lastWatchedAt),
     };
@@ -687,6 +712,7 @@ class VaultMediaEntity extends DataClass
           int? durationMs,
           int? lastPositionMs,
           int? fileSizeBytes,
+          bool? isFavorite,
           DateTime? createdAt,
           Value<DateTime?> lastWatchedAt = const Value.absent()}) =>
       VaultMediaEntity(
@@ -708,6 +734,7 @@ class VaultMediaEntity extends DataClass
         durationMs: durationMs ?? this.durationMs,
         lastPositionMs: lastPositionMs ?? this.lastPositionMs,
         fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+        isFavorite: isFavorite ?? this.isFavorite,
         createdAt: createdAt ?? this.createdAt,
         lastWatchedAt:
             lastWatchedAt.present ? lastWatchedAt.value : this.lastWatchedAt,
@@ -747,6 +774,8 @@ class VaultMediaEntity extends DataClass
       fileSizeBytes: data.fileSizeBytes.present
           ? data.fileSizeBytes.value
           : this.fileSizeBytes,
+      isFavorite:
+          data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastWatchedAt: data.lastWatchedAt.present
           ? data.lastWatchedAt.value
@@ -771,6 +800,7 @@ class VaultMediaEntity extends DataClass
           ..write('durationMs: $durationMs, ')
           ..write('lastPositionMs: $lastPositionMs, ')
           ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastWatchedAt: $lastWatchedAt')
           ..write(')'))
@@ -793,6 +823,7 @@ class VaultMediaEntity extends DataClass
       durationMs,
       lastPositionMs,
       fileSizeBytes,
+      isFavorite,
       createdAt,
       lastWatchedAt);
   @override
@@ -813,6 +844,7 @@ class VaultMediaEntity extends DataClass
           other.durationMs == this.durationMs &&
           other.lastPositionMs == this.lastPositionMs &&
           other.fileSizeBytes == this.fileSizeBytes &&
+          other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
           other.lastWatchedAt == this.lastWatchedAt);
 }
@@ -832,6 +864,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
   final Value<int> durationMs;
   final Value<int> lastPositionMs;
   final Value<int> fileSizeBytes;
+  final Value<bool> isFavorite;
   final Value<DateTime> createdAt;
   final Value<DateTime?> lastWatchedAt;
   final Value<int> rowid;
@@ -850,6 +883,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
     this.durationMs = const Value.absent(),
     this.lastPositionMs = const Value.absent(),
     this.fileSizeBytes = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastWatchedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -869,6 +903,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
     this.durationMs = const Value.absent(),
     this.lastPositionMs = const Value.absent(),
     this.fileSizeBytes = const Value.absent(),
+    this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastWatchedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -893,6 +928,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
     Expression<int>? durationMs,
     Expression<int>? lastPositionMs,
     Expression<int>? fileSizeBytes,
+    Expression<bool>? isFavorite,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastWatchedAt,
     Expression<int>? rowid,
@@ -914,6 +950,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
       if (durationMs != null) 'duration_ms': durationMs,
       if (lastPositionMs != null) 'last_position_ms': lastPositionMs,
       if (fileSizeBytes != null) 'file_size_bytes': fileSizeBytes,
+      if (isFavorite != null) 'is_favorite': isFavorite,
       if (createdAt != null) 'created_at': createdAt,
       if (lastWatchedAt != null) 'last_watched_at': lastWatchedAt,
       if (rowid != null) 'rowid': rowid,
@@ -935,6 +972,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
       Value<int>? durationMs,
       Value<int>? lastPositionMs,
       Value<int>? fileSizeBytes,
+      Value<bool>? isFavorite,
       Value<DateTime>? createdAt,
       Value<DateTime?>? lastWatchedAt,
       Value<int>? rowid}) {
@@ -955,6 +993,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
       durationMs: durationMs ?? this.durationMs,
       lastPositionMs: lastPositionMs ?? this.lastPositionMs,
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
       rowid: rowid ?? this.rowid,
@@ -1009,6 +1048,9 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
     if (fileSizeBytes.present) {
       map['file_size_bytes'] = Variable<int>(fileSizeBytes.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1038,6 +1080,7 @@ class VaultMediaItemsCompanion extends UpdateCompanion<VaultMediaEntity> {
           ..write('durationMs: $durationMs, ')
           ..write('lastPositionMs: $lastPositionMs, ')
           ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastWatchedAt: $lastWatchedAt, ')
           ..write('rowid: $rowid')
@@ -1328,6 +1371,7 @@ typedef $$VaultMediaItemsTableCreateCompanionBuilder = VaultMediaItemsCompanion
   Value<int> durationMs,
   Value<int> lastPositionMs,
   Value<int> fileSizeBytes,
+  Value<bool> isFavorite,
   Value<DateTime> createdAt,
   Value<DateTime?> lastWatchedAt,
   Value<int> rowid,
@@ -1348,6 +1392,7 @@ typedef $$VaultMediaItemsTableUpdateCompanionBuilder = VaultMediaItemsCompanion
   Value<int> durationMs,
   Value<int> lastPositionMs,
   Value<int> fileSizeBytes,
+  Value<bool> isFavorite,
   Value<DateTime> createdAt,
   Value<DateTime?> lastWatchedAt,
   Value<int> rowid,
@@ -1427,6 +1472,9 @@ class $$VaultMediaItemsTableFilterComposer
 
   ColumnFilters<int> get fileSizeBytes => $composableBuilder(
       column: $table.fileSizeBytes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -1511,6 +1559,9 @@ class $$VaultMediaItemsTableOrderingComposer
       column: $table.fileSizeBytes,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -1587,6 +1638,9 @@ class $$VaultMediaItemsTableAnnotationComposer
   GeneratedColumn<int> get fileSizeBytes => $composableBuilder(
       column: $table.fileSizeBytes, builder: (column) => column);
 
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+      column: $table.isFavorite, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1652,6 +1706,7 @@ class $$VaultMediaItemsTableTableManager extends RootTableManager<
             Value<int> durationMs = const Value.absent(),
             Value<int> lastPositionMs = const Value.absent(),
             Value<int> fileSizeBytes = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastWatchedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -1671,6 +1726,7 @@ class $$VaultMediaItemsTableTableManager extends RootTableManager<
             durationMs: durationMs,
             lastPositionMs: lastPositionMs,
             fileSizeBytes: fileSizeBytes,
+            isFavorite: isFavorite,
             createdAt: createdAt,
             lastWatchedAt: lastWatchedAt,
             rowid: rowid,
@@ -1690,6 +1746,7 @@ class $$VaultMediaItemsTableTableManager extends RootTableManager<
             Value<int> durationMs = const Value.absent(),
             Value<int> lastPositionMs = const Value.absent(),
             Value<int> fileSizeBytes = const Value.absent(),
+            Value<bool> isFavorite = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastWatchedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -1709,6 +1766,7 @@ class $$VaultMediaItemsTableTableManager extends RootTableManager<
             durationMs: durationMs,
             lastPositionMs: lastPositionMs,
             fileSizeBytes: fileSizeBytes,
+            isFavorite: isFavorite,
             createdAt: createdAt,
             lastWatchedAt: lastWatchedAt,
             rowid: rowid,

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0007: Built-in System Collections, Attribution &amp; Hardware Orientation</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0007</span>
+      <h1>Built-in System Collections, Attribution &amp; Hardware Orientation</h1>
+      <p class="subtitle">Protected SQLite Collections, Resolving Relative Sandbox Assets, Anti-Plagiarism UX, and Fullscreen Screen Rotation.</p>
+    </header>
+
+    <section>
+      <h2>1. The Relative Path Sandbox Trap</h2>
+      <p>
+        On iOS, every app rebuild or launch generates a new container UUID: <code>/var/mobile/Containers/Data/Application/&lt;UUID&gt;/Documents</code>.
+        Storing relative paths like <code>vault_media/C8kP.../thumb.jpg</code> in SQLite protects data across UUID rotations, but passing this string directly to <code>Image.network()</code> crashes because Flutter interprets it as an invalid HTTP host.
+      </p>
+      <div class="diagram-box">
+┌─────────────────────────────────┬─────────────────────────────────┐
+│     FLUTTER IMAGE.NETWORK       │     REELVAULT VAULTIMAGE        │
+├─────────────────────────────────┼─────────────────────────────────┤
+│ • Treats path as URI host.      │ • Detects http:// vs relative.  │
+│ • Throws SocketException on     │ • Resolves runtime sandbox path │
+│   relative filesystem paths.    │   via getApplicationDocuments().│
+│ • Renders blank/error icons.    │ • Renders Image.file seamlessly!│
+└─────────────────────────────────┴─────────────────────────────────┘
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Default System Collections vs. User Collections</h2>
+      <p>
+        Features like <strong>"Favorites"</strong> must exist permanently as system collections:
+      </p>
+      <ul>
+        <li><strong>Protected Key:</strong> Hardcoded ID <code>col_favorites</code> seeded at database creation.</li>
+        <li><strong>Creation Guard:</strong> Custom folder modal rejects user input named "Favorites" to prevent duplicate collision.</li>
+        <li><strong>Deletion Guard:</strong> Popup menu hides the "Delete" option for system-flagged collections.</li>
+        <li><strong>Query Union:</strong> <code>watchMediaForCollection('col_favorites')</code> returns both items with <code>collectionId == 'col_favorites'</code> AND items flagged <code>isFavorite == true</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. Anti-Plagiarism &amp; Creator Attribution UX</h2>
+      <p>
+        Saving third-party media requires honoring the original creators. ReelVault implements:
+      </p>
+      <ol>
+        <li><strong>Regex Extractors:</strong> Captures true <code>@handles</code> from title and OpenGraph metadata.</li>
+        <li><strong>Verified Creator Badge:</strong> Verified shield badge with author identity next to every video.</li>
+        <li><strong>Expandable Full Captions:</strong> Tapping the description reveals complete hashtags, credits, and links.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>4. Interactive Knowledge Check</h2>
+      <div id="quiz-box" class="quiz-box">
+        <p class="quiz-question">How does ReelVault prevent a user from accidentally deleting or duplicating the built-in "Favorites" collection?</p>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer(0, false)">A) By encrypting the entire SQLite database</button>
+          <button class="quiz-btn" onclick="checkAnswer(1, true)">B) By enforcing a reserved ID ('col_favorites'), disabling deletion menus, and validating folder names on creation</button>
+          <button class="quiz-btn" onclick="checkAnswer(2, false)">C) By storing favorites in a remote cloud server</button>
+          <button class="quiz-btn" onclick="checkAnswer(3, false)">D) By requiring FaceID to view favorites</button>
+        </div>
+        <p id="quiz-result" class="quiz-feedback"></p>
+      </div>
+    </section>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>

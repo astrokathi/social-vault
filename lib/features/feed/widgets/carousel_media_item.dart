@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/url_sanitizer.dart';
+import '../../../core/widgets/vault_image.dart';
 import '../../../data/database/app_database.dart';
 
 class CarouselMediaItem extends ConsumerStatefulWidget {
@@ -23,7 +25,7 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
   late final PageController _pageController;
   int _currentSlide = 0;
   List<String> _slides = [];
-  bool _isLiked = false;
+  bool _isCaptionExpanded = false;
 
   @override
   void initState() {
@@ -80,11 +82,12 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
   @override
   Widget build(BuildContext context) {
     final totalSlides = _slides.length;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Horizontal PageView for Slides
+        // 1. Horizontal PageView for Slides (with VaultImage for local files)
         PageView.builder(
           controller: _pageController,
           itemCount: totalSlides,
@@ -94,17 +97,11 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
             return Container(
               color: Colors.black,
               child: Center(
-                child: Image.network(
-                  slideUrl,
+                child: VaultImage(
+                  imagePath: slideUrl,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: AppTheme.charcoal,
-                    child: const Center(
-                      child: Icon(PhosphorIconsRegular.image, size: 64, color: Colors.white24),
-                    ),
-                  ),
                 ),
               ),
             );
@@ -168,20 +165,65 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Favorite Action (Toggles Favorites system collection)
               _buildActionButton(
-                icon: _isLiked ? PhosphorIconsFill.heart : PhosphorIconsRegular.heart,
-                color: _isLiked ? AppTheme.accentPink : Colors.white,
-                label: '9.8k',
-                onTap: () => setState(() => _isLiked = !_isLiked),
+                icon: widget.item.isFavorite ? PhosphorIconsFill.star : PhosphorIconsRegular.star,
+                color: widget.item.isFavorite ? AppTheme.accentAmber : Colors.white,
+                label: widget.item.isFavorite ? 'Favorited' : 'Favorite',
+                onTap: () async {
+                  final db = ref.read(databaseProvider);
+                  final isFav = await db.toggleFavorite(widget.item.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: AppTheme.charcoal,
+                        duration: const Duration(seconds: 2),
+                        content: Row(
+                          children: [
+                            Icon(
+                              isFav ? PhosphorIconsFill.star : PhosphorIconsRegular.star,
+                              color: isFav ? AppTheme.accentAmber : Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isFav ? 'Added to Favorites' : 'Removed from Favorites',
+                              style: GoogleFonts.inter(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 18),
+
+              // Landscape Rotation Toggle
               _buildActionButton(
-                icon: PhosphorIconsFill.bookmarkSimple,
-                color: AppTheme.accentAmber,
-                label: 'Saved',
-                onTap: () {},
+                icon: isLandscape
+                    ? PhosphorIconsBold.deviceMobile
+                    : PhosphorIconsBold.cornersOut,
+                color: isLandscape ? AppTheme.accentCyan : Colors.white,
+                label: isLandscape ? 'Portrait' : 'Rotate',
+                onTap: () {
+                  if (isLandscape) {
+                    SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.portraitUp,
+                    ]);
+                  } else {
+                    SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.landscapeLeft,
+                      DeviceOrientation.landscapeRight,
+                    ]);
+                  }
+                },
               ),
               const SizedBox(height: 18),
+
+              // Storage Indicator
               _buildActionButton(
                 icon: PhosphorIconsRegular.hardDrive,
                 color: AppTheme.accentCyan,
@@ -192,7 +234,7 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
           ),
         ),
 
-        // 5. Bottom Info Overlay
+        // 5. Bottom Info Overlay (Attribution, Anti-Plagiarism, Expandable Caption)
         Positioned(
           left: 16,
           right: 80,
@@ -230,6 +272,8 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
                       color: Colors.white,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  const Icon(PhosphorIconsFill.checkCircle, size: 14, color: Color(0xFF3897F0)),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -249,14 +293,78 @@ class _CarouselMediaItemState extends ConsumerState<CarouselMediaItem> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                widget.item.caption,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.92),
-                  height: 1.35,
+
+              // Expandable Caption & Attribution
+              GestureDetector(
+                onTap: () => setState(() => _isCaptionExpanded = !_isCaptionExpanded),
+                child: AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 200),
+                  crossFadeState: _isCaptionExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  firstChild: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.item.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.92),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'more',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.accentPink,
+                        ),
+                      ),
+                    ],
+                  ),
+                  secondChild: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.item.caption,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.white,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(PhosphorIconsFill.shieldCheck, size: 14, color: AppTheme.accentCyan),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Original Creator: ${widget.item.authorHandle}',
+                              style: GoogleFonts.jetBrainsMono(fontSize: 10, color: AppTheme.accentCyan, fontWeight: FontWeight.w600),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'Tap to collapse ▲',
+                              style: GoogleFonts.inter(fontSize: 11, color: Colors.white60),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),

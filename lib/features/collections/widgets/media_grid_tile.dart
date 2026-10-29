@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/url_sanitizer.dart';
+import '../../../core/widgets/vault_image.dart';
 import '../../../data/database/app_database.dart';
 
 class MediaGridTile extends StatelessWidget {
@@ -55,16 +56,10 @@ class MediaGridTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Thumbnail Image
-            Image.network(
-              item.localThumbnailRelPath,
+            // 1. Thumbnail Image (supports local files and remote URLs seamlessly)
+            VaultImage(
+              imagePath: item.localThumbnailRelPath,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: AppTheme.charcoal,
-                child: const Center(
-                  child: Icon(PhosphorIconsRegular.imageBroken, size: 24, color: Colors.white24),
-                ),
-              ),
             ),
 
             // 2. Subtle Gradient Overlay
@@ -96,37 +91,60 @@ class MediaGridTile extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  item.mediaType == MediaType.carousel
+                  item.mediaType == MediaType.carousel ||
+                          item.mediaType == MediaType.photo ||
+                          item.canonicalUrl.contains('/p/')
                       ? PhosphorIconsFill.images
-                      : PhosphorIconsFill.filmReel,
-                  size: 12,
+                      : PhosphorIconsFill.videoCamera,
+                  size: 11,
                   color: Colors.white,
                 ),
               ),
             ),
 
-            // 4. Top Right Duration / Slide Badge
-            Positioned(
-              top: 6,
-              right: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(4),
+            // 4. Top Right Favorite Star Badge
+            if (item.isFavorite)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsFill.star,
+                    size: 11,
+                    color: AppTheme.accentAmber,
+                  ),
                 ),
-                child: Text(
-                  item.mediaType == MediaType.carousel
-                      ? 'Slide'
-                      : UrlSanitizer.formatDuration(item.durationMs),
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+              )
+            else
+              // Duration / Slide Badge
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    item.mediaType == MediaType.carousel ||
+                            item.mediaType == MediaType.photo ||
+                            item.canonicalUrl.contains('/p/')
+                        ? 'Slide'
+                        : UrlSanitizer.formatDuration(item.durationMs),
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
 
             // 5. Watched Checkmark Badge (If 100% Watched)
             if (isWatched)

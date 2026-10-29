@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0006: Empty States &amp; iOS Share Intake Architecture</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0006</span>
+      <h1>Empty States &amp; iOS Share Intake Architecture</h1>
+      <p class="subtitle">Instructional Zero-Data Design, Apple's App Groups Limitation, and the Clipboard Detection Pattern.</p>
+    </header>
+
+    <section>
+      <h2>1. The Problem with Instagram Sharing on iOS</h2>
+      <p>
+        When you tap the <strong>Share</strong> button on an Instagram Reel, Instagram displays its internal direct message (DM) interface, not the iOS system share sheet.
+      </p>
+      <p>
+        Furthermore, even if you tap "Share to..." in Instagram, iOS only displays third-party apps in the system share sheet if they include an <strong>iOS Share Extension (.appex)</strong> communicating via an <strong>App Group</strong>.
+      </p>
+      <div class="diagram-box">
+┌────────────────────────────────────────────────────────────────────────┐
+│               APPLE'S PROVISIONING TIER RESTRICTION                    │
+├────────────────────────────────────────────────────────────────────────┤
+│ Paid Apple Developer Account ($99/year):                               │
+│   ✓ App Groups (`group.com.reelvault`) enabled.                        │
+│   ✓ Native iOS Share Extension (`.appex`) can run.                     │
+├────────────────────────────────────────────────────────────────────────┤
+│ Free Personal Apple ID Team:                                           │
+│   ✗ App Groups explicitly prohibited by Apple Code Signing.            │
+│   ✗ Share Extensions cannot share memory or SQLite with main app.      │
+│   ➔ Solution: Seamless In-App Clipboard Intake Pattern.               │
+└────────────────────────────────────────────────────────────────────────┘
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The Industry-Standard Clipboard Pattern</h2>
+      <p>
+        Every prominent Instagram utility on iOS (such as Repost and InSaver) relies on the <strong>Clipboard Intake Pattern</strong>:
+      </p>
+      <ol>
+        <li>User taps <strong>Share ➔ Copy Link</strong> inside Instagram (1 single tap).</li>
+        <li>User switches to ReelVault.</li>
+        <li>ReelVault monitors <code>WidgetsBindingObserver.didChangeAppLifecycleState()</code>.</li>
+        <li>When state transitions to <code>AppLifecycleState.resumed</code>, the app inspects <code>Clipboard.getData()</code>.</li>
+        <li>If an Instagram URL is detected, ReelVault displays an instant <strong>"Save to Vault"</strong> action banner.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>3. Instructional Empty State Banners</h2>
+      <p>
+        When a user clears sample data, a blank black screen feels broken. ReelVault solves this with an <strong>Instructional Empty State</strong> featuring:
+      </p>
+      <ul>
+        <li>A visual 3-step guide explaining how to copy from Instagram.</li>
+        <li>A primary <strong>"Paste Instagram Link"</strong> button reading the clipboard or prompting manual entry.</li>
+        <li>A sandbox <strong>"Test with Demo Reel"</strong> button to verify video extraction anytime.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. Interactive Knowledge Check</h2>
+      <div id="quiz-box" class="quiz-box">
+        <p class="quiz-question">Why can't an app signed with a free Personal Apple ID use a native iOS Share Extension with App Groups?</p>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer(0, false)">A) iOS does not allow background execution</button>
+          <button class="quiz-btn" onclick="checkAnswer(1, true)">B) Apple reserves the App Groups capability exclusively for paid Developer accounts</button>
+          <button class="quiz-btn" onclick="checkAnswer(2, false)">C) Flutter does not support Swift</button>
+          <button class="quiz-btn" onclick="checkAnswer(3, false)">D) Lightning cables cannot transfer text</button>
+        </div>
+        <p id="quiz-result" class="quiz-feedback"></p>
+      </div>
+    </section>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>
