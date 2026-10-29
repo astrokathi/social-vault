@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0001: Architecture Foundations &amp; Reactive SQLite with Drift</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0001</span>
+      <h1>Architecture Foundations &amp; Reactive SQLite with Drift</h1>
+      <p class="subtitle">Feature-First Clean Architecture, Indexed Schemas, and the iOS Sandbox RelPath Pattern.</p>
+    </header>
+
+    <section>
+      <h2>1. The Problem: Local-First Media Needs True Relational Integrity</h2>
+      <p>
+        Building a personal offline vault like <strong>ReelVault</strong> requires more than key-value storage (like <code>SharedPreferences</code> or <code>Hive</code>). We are managing thousands of saved Instagram Reels, Carousels, and Photos organized by Collections, filtered by completion thresholds (e.g. <em>"Hide 100% Watched"</em>), and queried in random or sequence playback orders.
+      </p>
+      <p>
+        If an app stores 10,000 video records, a simple un-indexed query or linear scan causes frame drops during vertical swipes. <strong>Drift</strong> compiles typed Dart queries into high-performance C SQLite calls backed by binary B-Trees.
+      </p>
+
+      <div class="callout tip">
+        <h4>Architectural Invariant</h4>
+        <p>
+          Never store full absolute file paths (e.g., <code>/var/mobile/Containers/Data/Application/&lt;UUID&gt;/...</code>) in SQLite on iOS! Every time iOS updates or restarts an app, that container <code>&lt;UUID&gt;</code> can change. We only store <em>relative paths</em> (e.g., <code>vault_media/C9xLmP2oQ1z/thumb.webp</code>) and prepend <code>getApplicationDocumentsDirectory().path</code> at runtime.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. System Topology &amp; Clean Architecture Directory Flow</h2>
+      <p>
+        ReelVault adopts <strong>Feature-First Clean Architecture</strong>. Instead of grouping all models together and all widgets together, every domain feature owns its providers, widgets, and screens:
+      </p>
+
+      <div class="diagram-box">
+lib/
+├── core/                  &lt;-- Shared themes, URL sanitizer, adaptive layout breakpoints
+├── data/
+│   ├── database/          &lt;-- Drift SQLite schema, reactive streams &amp; seed records
+│   └── services/          &lt;-- OS Share intent listener, OpenGraph parser, binary cache
+└── features/
+    ├── share_sheet/       &lt;-- Native interceptor &amp; Collection Picker bottom sheet
+    ├── feed/              &lt;-- Endless vertical PageView, Video Player &amp; Carousel slider
+    ├── collections/       &lt;-- 2x2 Mosaic Folder cards &amp; 3-column media grid
+    └── profile/           &lt;-- Storage telemetry, cache cleaner, backup export
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Drift Schema Deep-Dive: Reactive Queries with Indexing</h2>
+      <p>
+        In <code>lib/data/database/app_database.dart</code>, we defined two core tables with explicit database indexes:
+      </p>
+      <pre><code>@DataClassName('VaultMediaEntity')
+@TableIndex(name: 'idx_media_shortcode', columns: {#shortcode}, unique: true)
+@TableIndex(name: 'idx_media_collection', columns: {#collectionId})
+@TableIndex(name: 'idx_media_progress', columns: {#watchProgress})
+class VaultMediaItems extends Table { ... }</code></pre>
+
+      <p>
+        Why index <code>watchProgress</code>? Because our endless feed query filters items dynamically:
+      </p>
+      <pre><code>Stream&lt;List&lt;VaultMediaEntity&gt;&gt; watchFeedQueue({required bool hideCompleted}) {
+  final query = select(vaultMediaItems);
+  if (hideCompleted) {
+    query.where((tbl) => tbl.watchProgress.isSmallerThanValue(0.98));
+  }
+  query.orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]);
+  return query.watch(); // Emits new list automatically on any DB write!
+}</code></pre>
+      <p>
+        Calling <code>.watch()</code> creates an active SQLite hook. When the video player reaches 100% and commits a progress update, Drift triggers the stream, and Riverpod's <code>StreamProvider</code> updates the UI seamlessly without messy event buses or manual refreshes.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-card" id="quiz-1">
+        <p class="quiz-question">Why must local media file paths be stored as relative paths instead of absolute paths in SQLite?</p>
+        <button class="quiz-option" type="button">Relative paths take fewer bytes of storage in SQLite text columns.</button>
+        <button class="quiz-option" type="button">iOS sandboxed app UUIDs change across app updates and rebuilds.</button>
+        <button class="quiz-option" type="button">Drift queries fail if a path contains forward slashes or colons.</button>
+        <button class="quiz-option" type="button">Android does not support reading absolute paths from the file system.</button>
+        <div class="quiz-feedback"></div>
+      </div>
+    </section>
+
+    <footer>
+      <span>ReelVault Interactive Curriculum</span>
+      <span><a href="https://drift.simonbinder.eu/" target="_blank">Primary Source: Drift Documentation &rarr;</a></span>
+    </footer>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+  <script>
+    initQuiz('quiz-1', 1, 'iOS recreates container UUID directories periodically. Storing relative paths ensures your files remain accessible by joining them with getApplicationDocumentsDirectory() at runtime.');
+  </script>
+</body>
+</html>

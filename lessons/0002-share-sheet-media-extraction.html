@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0002: Native OS Share Sheet Interception &amp; Resilient Media Extraction</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0002</span>
+      <h1>Native OS Share Sheet Interception &amp; Resilient Media Extraction</h1>
+      <p class="subtitle">Intercepting Android ACTION_SEND &amp; iOS Share Extensions, Parsing OpenGraph, and Caching Ephemeral CDN Blobs.</p>
+    </header>
+
+    <section>
+      <h2>1. The Native Bridge: How Share Sheets Work</h2>
+      <p>
+        When a user watches a reel on Instagram and taps <em>Share &rarr; ReelVault</em>, the operating system broadcasts an intent. Without proper configuration, mobile operating systems launch a second isolated process or drop the shared text.
+      </p>
+      <p>
+        In Android's <code>AndroidManifest.xml</code>, we configure two critical attributes:
+      </p>
+      <pre><code>&lt;activity
+    android:name=".MainActivity"
+    android:launchMode="singleTask"&gt;
+    &lt;!-- Intercepts plain-text URLs from social apps --&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.SEND" /&gt;
+        &lt;category android:name="android.intent.category.DEFAULT" /&gt;
+        &lt;data android:mimeType="text/plain" /&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;</code></pre>
+
+      <div class="callout important">
+        <h4>Why <code>singleTask</code>?</h4>
+        <p>
+          By default, Android uses <code>standard</code> launch mode, which spins up a brand-new Activity on top of the caller (Instagram). <code>singleTask</code> ensures that tapping ReelVault brings your already running app instance to the foreground and delivers the intent via <code>onNewIntent</code>.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. URL Sanitization: Stripping Telemetry Parameters</h2>
+      <p>
+        Shared links from Instagram contain session trackers like <code>?igsh=MXJxbzF...</code>. If two users share the same reel, different tracking query parameters would cause duplicate database entries:
+      </p>
+      <div class="diagram-box">
+Raw Shared String:
+  https://www.instagram.com/reel/C9xLmP2oQ1z/?igsh=MWZ4Nm...&utm_source=qr
+       │
+       ▼  UrlSanitizer.parseInstagramUrl()
+Clean Canonical Record:
+  shortcode:    "C9xLmP2oQ1z"
+  canonicalUrl: "https://www.instagram.com/reel/C9xLmP2oQ1z/"
+      </div>
+    </section>
+
+    <section>
+      <h2>3. The Ephemeral CDN Trap: Why Storing URLs Fails</h2>
+      <p>
+        Social CDNs (like Facebook's <code>fbcdn.net</code>) sign URLs with cryptographic expiration tokens:
+      </p>
+      <pre><code>https://scontent.cdninstagram.com/v/t51.2885-15/...?oh=00_AYB...&amp;oe=66DE41F9</code></pre>
+      <p>
+        The <code>oe=</code> parameter is a hexadecimal UNIX timestamp. After 24 to 48 hours, any HTTP GET request to that link returns <strong>HTTP 403 Forbidden</strong>.
+      </p>
+      <p>
+        Our <code>LocalAssetManager</code> immediately streams the remote bytes into local application storage:
+      </p>
+      <pre><code>await _dio.download(metadata.videoRemoteUrl, localFile.path);
+// File is now saved permanently inside the local device sandbox!</code></pre>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-card" id="quiz-2">
+        <p class="quiz-question">Why must ReelVault download the video and thumbnail bytes rather than storing remote URLs in SQLite?</p>
+        <button class="quiz-option" type="button">SQLite does not allow storing remote URLs with query strings longer than 255 characters.</button>
+        <button class="quiz-option" type="button">Instagram CDN links include signed cryptographic expiration tokens that expire in 24–48 hours.</button>
+        <button class="quiz-option" type="button">Flutter video player widgets cannot stream video over standard HTTPS connections.</button>
+        <button class="quiz-option" type="button">Android and iOS file permissions block network access to external social domains.</button>
+        <div class="quiz-feedback"></div>
+      </div>
+    </section>
+
+    <footer>
+      <span><a href="0001-architecture-foundations-drift.html">&larr; Lesson 0001: Drift SQLite</a></span>
+      <span><a href="https://developer.android.com/guide/components/intents-filters" target="_blank">Android Intent Documentation &rarr;</a></span>
+    </footer>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+  <script>
+    initQuiz('quiz-2', 1, 'Instagram and Facebook CDN links expire within 24–48 hours due to the oe= cryptographic signature. Downloading binary assets to local storage guarantees permanent offline availability.');
+  </script>
+</body>
+</html>

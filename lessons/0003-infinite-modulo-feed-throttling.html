@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0003: Modulo Arithmetic for Infinite Feeds &amp; Watch Progress Throttling</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0003</span>
+      <h1>Modulo Arithmetic for Infinite Feeds &amp; Watch Progress Throttling</h1>
+      <p class="subtitle">Unbounded PageView.builder loops, High-FPS UI vs. 1Hz SQLite Telemetry Throttling.</p>
+    </header>
+
+    <section>
+      <h2>1. The Problem with Standard PageViews</h2>
+      <p>
+        In standard Flutter applications, passing <code>itemCount: items.length</code> to a <code>PageView.builder</code> creates a bounded list. When a user with 5 saved videos reaches the 5th video, a scroll bounce occurs, halting the hypnotic loop.
+      </p>
+      <p>
+        To make an endless loop, we omit <code>itemCount</code> entirely (passing <code>null</code>) and map unbounded sequential integers into cyclic indices using the mathematical modulo operator (<code>%</code>):
+      </p>
+
+      <pre><code>PageView.builder(
+  scrollDirection: Axis.vertical,
+  // itemCount is null -&gt; Flutter treats the list as unbounded infinity!
+  itemBuilder: (context, rawIndex) {
+    if (items.isEmpty) return const EmptyFeedPlaceholder();
+    
+    // Cyclic resolution
+    final activeItem = items[rawIndex % items.length];
+    
+    return ReelVideoItem(
+      key: ValueKey('${activeItem.id}_$rawIndex'),
+      item: activeItem,
+    );
+  },
+)</code></pre>
+    </section>
+
+    <section>
+      <h2>2. High-Frequency UI vs. Low-Frequency SQLite Disk Writes</h2>
+      <p>
+        A video player's controller ticks 30 to 60 times every second. If an app performs an <code>UPDATE vault_media_items SET watch_progress = ...</code> on every tick, two catastrophic bugs occur:
+      </p>
+      <ol>
+        <li><strong>SQLite Lock Contention &amp; UI Jank:</strong> Frequent flash storage writes starve Flutter's UI isolate.</li>
+        <li><strong>Reactive Stream Thrashing:</strong> Drift's reactive streams would re-broadcast 60 times a second, causing downstream widgets to rebuild continuously.</li>
+      </ol>
+
+      <div class="callout tip">
+        <h4>The Decoupled Dual-Clock Pattern</h4>
+        <p>
+          We update local widget state in memory at high frequency (smooth visual progress bar), while throttling persistent disk writes to at most once per 1,000 milliseconds:
+        </p>
+      </div>
+
+      <pre><code>void _onVideoControllerTick() {
+  final ratio = value.position.inMilliseconds / value.duration.inMilliseconds;
+  final normalized = ratio &gt;= 0.95 ? 1.0 : ratio.clamp(0.0, 1.0);
+
+  // 1. Instant 60Hz UI repaint
+  setState(() =&gt; _currentProgress = normalized);
+
+  // 2. Throttled 1Hz SQLite commit
+  final now = DateTime.now();
+  if (normalized &gt;= 1.0 || now.difference(_lastDbWrite).inMilliseconds &gt;= 1000) {
+    _lastDbWrite = now;
+    ref.read(databaseProvider).updateWatchProgress(
+      mediaId: widget.item.id,
+      progress: normalized,
+      positionMs: value.position.inMilliseconds,
+    );
+  }
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>3. Completion Threshold: The 95% Rule</h2>
+      <p>
+        Why consider a video <strong>100% watched</strong> when it hits 95%? Credit sequences, ending watermarks, or user swipe gestures happen before the exact final frame. Setting completion at 95% ensures videos are reliably marked as finished even if the user swipes a split-second early.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-card" id="quiz-3">
+        <p class="quiz-question">What would happen if we updated SQLite on every single video player controller tick?</p>
+        <button class="quiz-option" type="button">The database file would corrupt and crash the Flutter application.</button>
+        <button class="quiz-option" type="button">Disk I/O contention causes UI jank and reactive stream thrashing.</button>
+        <button class="quiz-option" type="button">Drift automatically throws an exception if queried more than twice a second.</button>
+        <button class="quiz-option" type="button">Android and iOS operating systems terminate background audio playback.</button>
+        <div class="quiz-feedback"></div>
+      </div>
+    </section>
+
+    <footer>
+      <span><a href="0002-share-sheet-media-extraction.html">&larr; Lesson 0002: Share Sheet</a></span>
+      <span><a href="https://api.flutter.dev/flutter/widgets/PageView-class.html" target="_blank">Flutter PageView Documentation &rarr;</a></span>
+    </footer>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+  <script>
+    initQuiz('quiz-3', 1, 'Writing to SQLite 60 times a second creates extreme disk I/O, burns battery, and triggers reactive stream rebuild cascades across the widget tree.');
+  </script>
+</body>
+</html>

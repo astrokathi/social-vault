@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelVault Architecture Reference &amp; Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Reference Document</span>
+      <h1>Production Mobile Architecture Cheat Sheet</h1>
+      <p class="subtitle">Quick reference for Local-First Storage, OS Share Sheet Interception, and Infinite Loops.</p>
+    </header>
+
+    <section>
+      <h2>1. The Core Architecture Loop</h2>
+      <div class="diagram-box">
+[OS Share Sheet (ACTION_SEND)]
+      │
+      ▼ (URL Sanitizer: strip ?igsh=...)
+[ShareCollectionSheet Modal]
+      │
+      ▼ (OpenGraph Crawler: og:image, og:video)
+[LocalAssetManager] ──(Streams binary bytes)──&gt; `getApplicationDocumentsDirectory()/vault_media/`
+      │
+      ▼ (Drift SQLite ORM)
+[Indexed Relational Database]
+      │
+      ▼ (Reactive StreamProvider: watchFeedQueue())
+[Endless PageView.builder (rawIndex % length)]
+      │
+      ▼ (60Hz UI Bar &amp; 1Hz Throttled SQLite Write)
+[AdaptiveScaffold (Mobile BottomBar / Tablet 2-Pane Split View)]
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Drift Database Indexing Patterns</h2>
+      <pre><code>// 1. Unique shortcode prevents saving duplicate Reels
+@TableIndex(name: 'idx_media_shortcode', columns: {#shortcode}, unique: true)
+
+// 2. Collection foreign-key index speeds up folder filtering
+@TableIndex(name: 'idx_media_collection', columns: {#collectionId})
+
+// 3. Progress index enables instantaneous "Hide Watched (100%)" predicate filtering
+@TableIndex(name: 'idx_media_progress', columns: {#watchProgress})</code></pre>
+    </section>
+
+    <section>
+      <h2>3. The Modulo Infinite Scroll Formula</h2>
+      <pre><code>// Leave itemCount null to trigger infinite scrolling
+PageView.builder(
+  scrollDirection: Axis.vertical,
+  itemBuilder: (context, rawIndex) {
+    // Modulo ensures index cycles endlessly without boundary crashes
+    final item = items[rawIndex % items.length];
+    return item.mediaType == MediaType.carousel
+        ? CarouselMediaItem(item: item)
+        : ReelVideoItem(item: item);
+  },
+)</code></pre>
+    </section>
+
+    <section>
+      <h2>4. Responsive Breakpoints Quick-Reference</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--surface-border); text-align: left;">
+            <th style="padding: 8px;">Viewport Width</th>
+            <th style="padding: 8px;">Device Class</th>
+            <th style="padding: 8px;">Navigation</th>
+            <th style="padding: 8px;">Feed Structure</th>
+            <th style="padding: 8px;">Library Grid</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--surface-border);">
+            <td style="padding: 8px;"><code>&lt; 390dp</code></td>
+            <td style="padding: 8px;">iPhone SE / Mini</td>
+            <td style="padding: 8px;">56dp BottomBar</td>
+            <td style="padding: 8px;">Full bleed 9:16</td>
+            <td style="padding: 8px;">3 Columns</td>
+          </tr>
+          <tr style="border-bottom: 1px solid var(--surface-border);">
+            <td style="padding: 8px;"><code>390 – 699dp</code></td>
+            <td style="padding: 8px;">iPhone 16 Pro / Pixel 9</td>
+            <td style="padding: 8px;">Edge-to-Edge BottomBar</td>
+            <td style="padding: 8px;">Full bleed 9:16</td>
+            <td style="padding: 8px;">3 Columns</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px;"><code>&gt;= 700dp</code></td>
+            <td style="padding: 8px;">iPad / Tablets / Foldable</td>
+            <td style="padding: 8px;">80dp NavigationRail</td>
+            <td style="padding: 8px;">2-Pane (Player + Queue)</td>
+            <td style="padding: 8px;">5 Columns</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <span>ReelVault Quick Reference</span>
+      <span>Printable Cheat Sheet</span>
+    </footer>
+  </div>
+</body>
+</html>

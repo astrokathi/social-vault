@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0004: Adaptive Layouts &amp; Multi-Device Breakpoints</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="lesson-container">
+    <header>
+      <span class="badge">ReelVault Course • Lesson 0004</span>
+      <h1>Adaptive Layouts &amp; Multi-Device Breakpoints</h1>
+      <p class="subtitle">Responsive Viewports, NavigationRail vs BottomNavigationBar, and Tablet 2-Pane Split-Views.</p>
+    </header>
+
+    <section>
+      <h2>1. The Multi-Device Reality</h2>
+      <p>
+        Mobile developers often design solely for standard smartphones (e.g. 390pt width). But users run Flutter apps on compact devices (iPhone SE, 375pt), massive flagships (iPhone 16 Pro Max, 430pt), foldable inner displays, and tablets (iPad Pro, 834pt+).
+      </p>
+      <p>
+        Stretching a vertical 9:16 reel to full-screen on an iPad distorts the layout and wastes 60% of horizontal screen real estate.
+      </p>
+    </section>
+
+    <section>
+      <h2>2. Breakpoint Architecture</h2>
+      <div class="diagram-box">
+┌───────────────────────┬────────────────────────┬────────────────────────────────────────┐
+│ Device Class          │ Width Breakpoint       │ Adaptive Navigation &amp; Screen Strategy   │
+├───────────────────────┼────────────────────────┼────────────────────────────────────────┤
+│ Compact Mobile        │ &lt; 390dp                │ 56dp BottomNavigationBar + 3 Col Grid  │
+│ Large Mobile          │ 390dp – 699dp          │ Edge-to-Edge BottomBar + 3 Col Grid    │
+│ Tablet / Foldable     │ &gt;= 700dp               │ 80dp NavigationRail + 2-Pane Split View│
+└───────────────────────┴────────────────────────┴────────────────────────────────────────┘
+      </div>
+
+      <p>
+        In <code>lib/core/responsive/adaptive_scaffold.dart</code>, we use <code>LayoutBuilder</code> to monitor viewport changes continuously:
+      </p>
+
+      <pre><code>LayoutBuilder(
+  builder: (context, constraints) {
+    final isTablet = constraints.maxWidth &gt;= 700;
+    return isTablet
+        ? _buildTabletLayout(context, constraints)
+        : _buildMobileLayout(context);
+  },
+)</code></pre>
+    </section>
+
+    <section>
+      <h2>3. The Tablet 2-Pane Split View</h2>
+      <p>
+        On wide screens, instead of letterboxing black bars around the video, ReelVault partitions the screen into two coordinated panes:
+      </p>
+      <ul>
+        <li><strong>Left Pane (Flex 7):</strong> Full-height video player with top floating sequence controls.</li>
+        <li><strong>Right Pane (Flex 5):</strong> Live <em>Active Queue Inspector</em> displaying thumbnail cards, author handles, and watch progress percentages for every upcoming Reel in the queue. Tapping any item jumps immediately to that reel.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-card" id="quiz-4">
+        <p class="quiz-question">Why does ReelVault transition to a NavigationRail + 2-Pane Split View on viewports >= 700dp?</p>
+        <button class="quiz-option" type="button">iOS and Android guidelines mandate that tablets run in horizontal orientation only.</button>
+        <button class="quiz-option" type="button">Vertical 9:16 reels waste horizontal space unless paired with parallel queue telemetry.</button>
+        <button class="quiz-option" type="button">Flutter BottomNavigationBar throws an assertion error on screens wider than 699dp.</button>
+        <button class="quiz-option" type="button">SQLite queries run significantly faster when rendering two panes concurrently.</button>
+        <div class="quiz-feedback"></div>
+      </div>
+    </section>
+
+    <footer>
+      <span><a href="0003-infinite-modulo-feed-throttling.html">&larr; Lesson 0003: Modulo Feeds</a></span>
+      <span><a href="https://docs.flutter.dev/ui/layout/responsive/adaptive-apps" target="_blank">Flutter Adaptive Apps Guide &rarr;</a></span>
+    </footer>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+  <script>
+    initQuiz('quiz-4', 1, 'Vertical 9:16 video on wide tablet viewports leaves vast unused horizontal space. The 2-Pane Split View turns that space into an interactive queue inspector without sacrificing the player aspect ratio.');
+  </script>
+</body>
+</html>

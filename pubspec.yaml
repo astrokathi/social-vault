@@ -1,0 +1,49 @@
+name: reel_vault
+description: Personal local-first Share-Sheet video & carousel vault with endless feed.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & Dependency Injection
+  flutter_riverpod: ^2.5.1
+
+  # Local SQLite Database (Indexed & Reactive)
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # OS Share Sheet Receiver (Android ACTION_SEND & iOS Share Extension)
+  receive_sharing_intent: ^1.8.0
+
+  # Media Playback & Caching
+  video_player: ^2.9.1
+  chewie: ^1.8.3
+  flutter_image_compress: ^2.3.0
+
+  # Networking, HTML OpenGraph Parsing & File Downloads
+  dio: ^5.6.0
+  html: ^0.15.4
+  webview_flutter: ^4.8.0
+
+  # UI & Utilities
+  phosphor_flutter: ^2.1.0
+  google_fonts: ^6.2.1
+  uuid: ^4.4.2
+  archive: ^3.6.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.12
+  drift_dev: ^2.20.0
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
